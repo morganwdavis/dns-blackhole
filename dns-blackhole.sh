@@ -1,22 +1,46 @@
 #!/bin/sh
 #
-# dns-blackhole.sh - Manages a BIND DNS blackhole
+# dns-blackhole.sh - Manages a BIND DNS blackhole using Response Policy Zones (RPZ)
+# https://www.morgandavis.net/post/simple-dns-blackhole/
 #
-# Usage:
-#   dns-blackhole.sh <on|off|status|update> [config_file]
-#
-# See https://www.morgandavis.net/post/simple-dns-blackhole/
-#
+# See below for options and usage details.
 
-set -eu
+usage_and_exit() {
+    cat >&2 <<EOF
+Usage:
+  $0 [OPTIONS] <on|off|status|update>
+
+Options:
+  -c config_file    Specify an alternate config file (default: dns-blackhole.conf)
+  -k                Keep temporary working files (skip cleanup)
+  -q                Quiet mode: suppress progress messages
+  -r                Restart 'named' instead of reloading the RPZ
+  on|off            Turn the blackhole on or off
+  status            Report blackhole and 'named' status
+  update            Fetch new blocked hosts data and rebuild zone files
+
+See also: https://www.morgandavis.net/post/simple-dns-blackhole/
+EOF
+    exit 1
+}
 
 #
 # Support functions
 #
 
-missing_config() {
-    echo "Missing config '$1'." >&2
+error_exit() {
+    echo "$@" >&2
     exit 1
+}
+
+msg() {
+    if [ "$quiet" -eq 0 ]; then
+        echo "$@"
+    fi
+}
+
+missing_config() {
+    error_exit "Missing config '$1'."
 }
 
 fetch_file() {
@@ -27,8 +51,7 @@ fetch_file() {
     elif command -v curl >/dev/null 2>&1; then
         curl --silent --show-error --max-time "$fetch_timeout" --output "$out" "$url"
     else
-        echo "Neither fetch nor curl found. Cannot fetch files." >&2
-        exit 1
+        error_exit "Neither fetch nor curl found. Cannot fetch files."
     fi
 }
 
@@ -51,8 +74,7 @@ command_named() {
     elif command -v systemctl >/dev/null 2>&1; then
         systemctl "$cmd" named
     else
-        echo "Cannot $cmd named service." >&2
-        exit 1
+        error_exit "Cannot $cmd named service."
     fi
 }
 
@@ -75,7 +97,7 @@ do_update() {
     # Create temporary working directory if it doesn't exist
     [ ! -d "$tmp_dir" ] && mkdir -p "$tmp_dir"
 
-    echo "Fetching master host list..."
+    msg "Fetching master host list..."
     output="$tmp_dir/master_hosts_list"
     attempt=0
     while [ "$attempt" -lt "$max_attempts" ]; do
@@ -92,12 +114,11 @@ do_update() {
     done
 
     if [ "$attempt" -ge "$max_attempts" ]; then
-        echo "Fetch failed after $max_attempts attempts. Giving up." >&2
-        exit 1
+        error_exit "Failed after $attempt/$max_attempts attempts."
     fi
 
-    echo "Optimizing hosts list..."
-    cat "$output" blocked_hosts |
+    msg "Optimizing ..."
+    cat "$output" "$dns_blackhole_dir/blocked_hosts" |
         sed -e 's/^[[:space:]]*//' |
         grep -v '^#' |
         awk '{print $2}' |
@@ -105,38 +126,54 @@ do_update() {
         grep -v '^$' |
         sort -u >"$tmp_dir/optimized_hosts"
 
-    echo "Excluding allowed hosts..."
-    sort allowed_hosts | comm -23 "$tmp_dir/optimized_hosts" - >"$tmp_dir/blocked_hosts"
+    msg "Excluding allowed hosts..."
+    sort "$dns_blackhole_dir/allowed_hosts" |
+        comm -23 "$tmp_dir/optimized_hosts" - >"$tmp_dir/blocked_hosts"
 
     timestamp=$(date +%s)
 
-    echo "Installing enabled/disabled RPZ zone files..."
+    msg "Installing enabled/disabled RPZ zone files..."
     make_zone >"$tmp_dir/$disabled_rpz"
     make_zone >"$tmp_dir/$enabled_rpz"
     sed 's/.*/& CNAME ./' "$tmp_dir/blocked_hosts" >>"$tmp_dir/$enabled_rpz"
     cp "$tmp_dir/$enabled_rpz" "$tmp_dir/$disabled_rpz" "$named_zone_files_dir/"
     chmod 644 "$named_zone_files_dir/$enabled_rpz"
+    chmod 644 "$named_zone_files_dir/$disabled_rpz"
 
-    if [ ! -f "$named_includes_dir/dns-blackhole.zone" ]; then
-        echo "Building included zone file..."
+    if [ ! -f "$named_includes_dir/$included_zone" ]; then
+        msg "Building included zone file..."
         {
             echo 'zone "rpz" {'
             echo '    type master;'
-            echo '    file "dns-blackhole.rpz";'
+            echo '    file "'$switch_symlink'";'
             echo '};'
-        } >"$named_includes_dir/dns-blackhole.zone"
+        } >"$named_includes_dir/$included_zone"
     fi
 
-    if [ "$debug" = "0" ]; then
-        echo "Cleaning up..."
+    if [ "$keep_temp" -eq 0 ]; then
+        msg "Cleaning up..."
         rm "$tmp_dir"/* && rmdir "$tmp_dir"
     fi
 
     if [ "$(get_symlink_target)" = "" ]; then
+        # Create the symlink; defaulting to off
         switch_blocker "off"
     else
         show_status
     fi
+}
+
+#
+# Update RPZ zone serial
+#
+update_serial() {
+    timestamp=$(date +%s)
+    zone_file=$(get_symlink_target)
+
+    # Set sed in-place flag (GNU is -i alone; BSD is -i '')
+    in_place=$(sed --version >/dev/null 2>&1 && echo -i || echo "-i ''")
+
+    eval sed "$in_place" "'s/^\([[:space:]]*\)[0-9]\{1,\}\([[:space:]]*; Serial\)/\1'$timestamp'\2/'" "$zone_file"
 }
 
 #
@@ -146,48 +183,80 @@ switch_blocker() {
     cd "$named_zone_files_dir"
     tgt=$enabled_rpz
     if [ ! -f "$tgt" ]; then
-        echo "Not ready to turn $1 yet. Perform an update first."
-        exit 1
+        error_exit "Not ready to turn $1 yet. Perform an update first."
     fi
     [ "$1" = off ] && tgt="$disabled_rpz"
     [ "$(get_symlink_target)" = "$tgt" ] && {
-        echo "DNS blackhole already $1."
+        msg "DNS blackhole already $1."
         exit 0
     }
     ln -sf "$tgt" "$switch_symlink"
-    echo "DNS blackhole switched $1."
+    msg "DNS blackhole switched $1."
 }
 
 #
 # Show status
 #
 show_status() {
-    echo "DNS blackhole is $([ "$(get_symlink_target)" = "$enabled_rpz" ] && echo "on" || echo "off")."
+    msg "DNS blackhole is $([ "$(get_symlink_target)" = "$enabled_rpz" ] && echo "on" || echo "off")."
 }
 
 #
 # Main
 #
 
-cd "$(dirname "$0")"
-opt="${1:-}"
-cfg="${2:-dns-blackhole.conf}"
+set -eu
 
-case "$opt" in
+config_file="dns-blackhole.conf"
+included_zone="dns-blackhole.zone"
+switch_symlink="dns-blackhole.rpz"
+enabled_rpz="dns-blackhole-enabled.rpz"
+disabled_rpz="dns-blackhole-disabled.rpz"
+
+# Change to the directory where this script resides (resolve symlinks if possible)
+if command -v realpath >/dev/null 2>&1; then
+    SCRIPT_DIR=$(realpath "$(dirname "$0")")
+elif readlink -f "$0" >/dev/null 2>&1; then
+    SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+else
+    SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+fi
+cd "$SCRIPT_DIR"
+
+quiet=0
+keep_temp=0
+refresh="rndc reload rpz"
+
+# Parse options
+while getopts "c:kqr" opt; do
+    case "$opt" in
+    c) config_file=$OPTARG ;;
+    k) keep_temp=1 ;;
+    q) quiet=1 ;;
+    r) refresh="command_named restart" ;;
+    *)
+        usage_and_exit
+        ;;
+    esac
+done
+
+shift $((OPTIND - 1))
+
+# Validate operation argument
+option="${1:-}"
+case "$option" in
 on | off | status | update) ;;
 *)
-    echo "Usage: $0 <on|off|status|update> [config_file]" >&2
-    exit 1
+    usage_and_exit
     ;;
 esac
 
-[ -f "$cfg" ] || {
-    echo "Config file '$cfg' not found." >&2
-    exit 1
+[ -f "$config_file" ] || {
+    error_exit "Config file '$config_file' not found."
 }
 
 # shellcheck source=/dev/null
-. "$cfg"
+. "$config_file"
 
 [ -n "$dns_blackhole_dir" ] || missing_config "dns_blackhole_dir"
 [ -n "$named_includes_dir" ] || missing_config "named_includes_dir"
@@ -198,30 +267,26 @@ esac
 [ -n "$retry_seconds" ] || missing_config "retry_seconds"
 [ -n "$max_attempts" ] || missing_config "max_attempts"
 [ -n "$master_host_list_url" ] || missing_config "master_host_list_url"
-[ -n "$debug" ] || missing_config "debug"
 
 for d in "$dns_blackhole_dir" "$named_includes_dir" "$named_zone_files_dir"; do
     [ -d "$d" ] || {
-        echo "Directory '$d' missing." >&2
-        exit 1
+        error_exit "Directory '$d' missing."
     }
 done
 
-cd "$dns_blackhole_dir"
-
-switch_symlink="dns-blackhole.rpz"
-enabled_rpz="dns-blackhole-enabled.rpz"
-disabled_rpz="dns-blackhole-disabled.rpz"
-
-cmd="restart"
-
-case "$opt" in
+case "$option" in
 status)
     show_status
-    cmd="status"
+    command_named "status"
+    exit 0
     ;;
-update) do_update ;;
-on | off) switch_blocker "$opt" ;;
+update)
+    do_update
+    ;;
+on | off)
+    switch_blocker "$option"
+    update_serial
+    ;;
 esac
 
-command_named "$cmd"
+$refresh
