@@ -1,0 +1,7 @@
+#
+# blocked_hosts.dist
+#
+# Add host entries, one per line, to add to the DNS blackhole.
+# Format is similar to /etc/hosts with 0.0.0.0 addresses:
+#
+# 0.0.0.0 example.com

@@ -1,0 +1,4 @@
+#
+# allowed_hosts.dist
+#
+# Add hostnames, one per line, to omit from the DNS blackhole.

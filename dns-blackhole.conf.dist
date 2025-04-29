@@ -1,0 +1,33 @@
+#
+# dns-blackhole.conf.dist
+#
+
+# Directory in which to store configs and build zone data
+dns_blackhole_dir="/usr/local/etc/dns-blackhole"
+
+# Path to your BIND namedb directory where included files go
+named_includes_dir="/usr/local/etc/namedb"
+
+# Path to your BIND namedb directory where zone data files go
+named_zone_files_dir="/usr/local/etc/namedb"
+
+# Temporary directory in which to fetch and build zone files
+tmp_dir="/var/tmp/dns-blackhole"
+
+# The fully qualified hostname of your nameserver
+dns_server_hostname="localhost"
+
+# Seconds before fetch times out
+fetch_timeout="15"
+
+# Seconds to wait between fetch retries
+retry_seconds="10"
+
+# Maximum number of fetch attempts before giving up
+max_attempts="3"
+
+# Master host list URL
+master_host_list_url="https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
+
+# Debug mode: 0=disabled, 1=enabled
+debug="0"
