@@ -286,8 +286,8 @@ on | off)
     ;;
 esac
 
-if [ $quiet -eq 0 ]; then
-    $refresh
-else
+if [ $quiet -eq 1 ]; then
     $refresh >/dev/null
+else
+    $refresh
 fi
