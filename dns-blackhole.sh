@@ -215,7 +215,7 @@ disabled_rpz="dns-blackhole-disabled.rpz"
 
 # Change to the directory where this script resides (resolve symlinks if possible)
 if command -v realpath >/dev/null 2>&1; then
-    SCRIPT_DIR=$(realpath "$(dirname "$0")")
+    SCRIPT_DIR=$(dirname "$(realpath "$0")")
 elif readlink -f "$0" >/dev/null 2>&1; then
     SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 else
