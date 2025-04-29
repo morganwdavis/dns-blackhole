@@ -12,7 +12,7 @@ A DNS blackhole works by redirecting requests for known ad-serving and tracker d
 
 ## Add a DNS Blackhole to Your Network
 
-If you're running your own home network with a Unix-based server, you can easily integrate a DNS blackhole into a local BIND DNS service -- and best of all, it's completely free. If you're already using BIND and know your way around it, you can use this script to manage BIND's Response Policy Zone (RPZ) feature. RPZ is designed for DNS firewall/blocking purposes. The script _should_ run on \*BSD and Linux distros with proper pathnames configured. Out of the box, it has a FreeBSD default configuration.
+If you're running your own home network with a Unix-based server, you can easily integrate a DNS blackhole into a local BIND DNS service -- and best of all, it's completely free. If you're already using BIND and know your way around it, you can use this script to manage BIND's Response Policy Zone (RPZ) feature. RPZ is designed for DNS firewall/blocking purposes. The script _should_ run on \*BSD and Linux distros with proper pathnames configured. Out of the box, it uses a FreeBSD default configuration.
 
 > The source of the blocked host list is provided by [Steven Black on GitHub](https://github.com/StevenBlack/hosts). See his page for full details.
 
@@ -25,7 +25,17 @@ Refer to the sample files below for these steps.
 3. Create and configure your `dns-blackhole.conf` file here
 
 ```
-Usage: ./dns-blackhole.sh <on|off|status|update> [config_file]
+Usage:
+  dns-blackhole.sh [OPTIONS] <on|off|status|update>
+
+Options:
+  -c config_file    Specify an alternate config file (default: dns-blackhole.conf)
+  -k                Keep temporary working files (skip cleanup after update)
+  -q                Quiet mode: suppress progress messages
+  -r                Restart 'named' instead of reloading the RPZ
+  on|off            Turn the blackhole on or off
+  status            Report blackhole and 'named' status
+  update            Fetch new blocked hosts data and rebuild zone files
 ```
 
 4. Run `dns-blackhole.sh` `update` and make sure there are no errors before continuing
@@ -41,9 +51,11 @@ response-policy { zone "rpz"; };
 include "/usr/local/etc/namedb/dns-blackhole.zone";
 ```
 
-7. Enable the blackhole now with `dns-blackhole.sh` `on`
-8. Test to make sure it's working (see [Testing](#testing) below)
-9. Add an entry in crontab or periodic to automate updates
+7. Restart `named` (e.g., `service named restart`) and check for errors
+8. Enable the blackhole now with `dns-blackhole.sh` `on`
+9. Test to make sure it's working (see [Testing](#testing) below)
+
+Once you're sure everything is working properly, add an entry in crontab or periodic to automate updates. Once per day is usually sufficient.
 
 ---
 
@@ -91,15 +103,12 @@ Create this in your `dns_blackhole_dir` directory.
 ```
 # ./dns-blackhole.sh update
 Fetching master host list...
-Optimizing hosts list...
+Optimizing ...
 Excluding allowed hosts...
 Installing enabled/disabled RPZ zone files...
-Building included zone file...
 Cleaning up...
-DNS blackhole switched off.
-Stopping named.
-Waiting for PIDS: 65473.
-Starting named.
+DNS blackhole is on.
+zone reload queued
 
 # ./dns-blackhole.sh on
 DNS blackhole switched on.
@@ -119,7 +128,7 @@ named is running as pid 39227.
 #minute hour    mday    month   wday    command
 #
 
-15      4       *       *       *       /usr/local/etc/dns-blackhole/dns-blackhole.sh update 2>&1 | mail -s "Update DNS blackhole zone" root
+15      4       *       *       *       /usr/local/etc/dns-blackhole/dns-blackhole.sh -q update 2>&1 | mail -s "Update DNS blackhole zone" root
 ```
 
 ## Testing {#testing}
