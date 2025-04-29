@@ -8,7 +8,7 @@
 usage_and_exit() {
     cat >&2 <<EOF
 Usage:
-  $0 [OPTIONS] <on|off|status|update>
+  $(basename "$0") [OPTIONS] <on|off|status|update>
 
 Options:
   -c config_file    Specify an alternate config file (default: dns-blackhole.conf)
