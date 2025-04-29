@@ -173,25 +173,25 @@ update_serial() {
     # Set sed in-place flag (GNU is -i alone; BSD is -i '')
     in_place=$(sed --version >/dev/null 2>&1 && echo -i || echo "-i ''")
 
-    eval sed "$in_place" "'s/^\([[:space:]]*\)[0-9]\{1,\}\([[:space:]]*; Serial\)/\1'$timestamp'\2/'" "$zone_file"
+    eval sed "$in_place" "'s/^\([[:space:]]*\)[0-9]\{1,\}\([[:space:]]*; Serial\)/\1'$timestamp'\2/'" "$named_zone_files_dir/$zone_file"
 }
 
 #
 # Switch DNS blackhole state
 #
 switch_blackhole() {
-    cd "$named_zone_files_dir"
+    state="$1"
     tgt=$enabled_rpz
-    if [ ! -f "$tgt" ]; then
-        error_exit "Not ready to turn $1 yet. Perform an update first."
+    if [ ! -f "$named_zone_files_dir/$tgt" ]; then
+        error_exit "Not ready. Perform an update first."
     fi
-    [ "$1" = off ] && tgt="$disabled_rpz"
+    [ "$state" = off ] && tgt="$disabled_rpz"
     [ "$(get_symlink_target)" = "$tgt" ] && {
-        msg "DNS blackhole already $1."
+        msg "DNS blackhole already $state."
         exit 0
     }
-    ln -sf "$tgt" "$switch_symlink"
-    msg "DNS blackhole switched $1."
+    ln -sf "$tgt" "$named_zone_files_dir/$switch_symlink"
+    msg "DNS blackhole switched $state."
 }
 
 #
@@ -227,14 +227,11 @@ quiet=0
 keep_temp=0
 refresh="rndc reload rpz"
 
-# Parse options
 while getopts "c:kqr" opt; do
     case "$opt" in
     c) config_file=$OPTARG ;;
     k) keep_temp=1 ;;
-    q)
-        quiet=1
-        ;;
+    q) quiet=1 ;;
     r) refresh="command_named restart" ;;
     *)
         usage_and_exit
