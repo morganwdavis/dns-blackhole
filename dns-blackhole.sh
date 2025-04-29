@@ -12,7 +12,7 @@ Usage:
 
 Options:
   -c config_file    Specify an alternate config file (default: dns-blackhole.conf)
-  -k                Keep temporary working files (skip cleanup)
+  -k                Keep temporary working files (skip cleanup after update)
   -q                Quiet mode: suppress progress messages
   -r                Restart 'named' instead of reloading the RPZ
   on|off            Turn the blackhole on or off
@@ -157,7 +157,7 @@ do_update() {
 
     if [ "$(get_symlink_target)" = "" ]; then
         # Create the symlink; defaulting to off
-        switch_blocker "off"
+        switch_blackhole "off"
     else
         show_status
     fi
@@ -179,7 +179,7 @@ update_serial() {
 #
 # Switch DNS blackhole state
 #
-switch_blocker() {
+switch_blackhole() {
     cd "$named_zone_files_dir"
     tgt=$enabled_rpz
     if [ ! -f "$tgt" ]; then
@@ -284,7 +284,7 @@ update)
     do_update
     ;;
 on | off)
-    switch_blocker "$option"
+    switch_blackhole "$option"
     update_serial
     ;;
 esac
