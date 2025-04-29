@@ -2,7 +2,7 @@
 # dns-blackhole.conf.dist
 #
 
-# Directory in which to store configs and build zone data
+# Directory in which config and custom host files reside
 dns_blackhole_dir="/usr/local/etc/dns-blackhole"
 
 # Path to your BIND namedb directory where included files go
@@ -27,7 +27,5 @@ retry_seconds="10"
 max_attempts="3"
 
 # Master host list URL
+# See https://github.com/StevenBlack/hosts for full details
 master_host_list_url="https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
-
-# Debug mode: 0=disabled, 1=enabled
-debug="0"
