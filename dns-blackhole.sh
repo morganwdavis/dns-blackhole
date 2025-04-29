@@ -57,7 +57,7 @@ command_named() {
 }
 
 get_symlink_target() {
-    link="$1"
+    link="$named_zone_files_dir/$switch_symlink"
     if [ -L "$link" ]; then
         basename "$(readlink "$link" 2>/dev/null || echo '')"
     else
@@ -132,8 +132,10 @@ do_update() {
         rm "$tmp_dir"/* && rmdir "$tmp_dir"
     fi
 
-    if [ ! -L "$switch_symlink" ]; then
+    if [ "$(get_symlink_target)" = "" ]; then
         switch_blocker "off"
+    else
+        show_status
     fi
 }
 
@@ -141,14 +143,14 @@ do_update() {
 # Switch DNS blackhole state
 #
 switch_blocker() {
-    cd "$named_includes_dir"
+    cd "$named_zone_files_dir"
     tgt=$enabled_rpz
     if [ ! -f "$tgt" ]; then
         echo "Not ready to turn $1 yet. Perform an update first."
         exit 1
     fi
     [ "$1" = off ] && tgt="$disabled_rpz"
-    [ "$(readlink "$switch_symlink" 2>/dev/null || echo)" = "$tgt" ] && {
+    [ "$(get_symlink_target)" = "$tgt" ] && {
         echo "DNS blackhole already $1."
         exit 0
     }
@@ -160,13 +162,7 @@ switch_blocker() {
 # Show status
 #
 show_status() {
-    cd "$named_includes_dir"
-    target="$(get_symlink_target "$switch_symlink")"
-    if [ "$target" = "$enabled_rpz" ]; then
-        echo "DNS blackhole is on."
-    else
-        echo "DNS blackhole is off."
-    fi
+    echo "DNS blackhole is $([ "$(get_symlink_target)" = "$enabled_rpz" ] && echo "on" || echo "off")."
 }
 
 #
