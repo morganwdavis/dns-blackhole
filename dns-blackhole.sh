@@ -268,9 +268,7 @@ esac
 [ -n "$master_host_list_url" ] || missing_config "master_host_list_url"
 
 for d in "$dns_blackhole_dir" "$named_includes_dir" "$named_zone_files_dir"; do
-    [ -d "$d" ] || {
-        error_exit "Directory '$d' missing."
-    }
+    [ -d "$d" ] || error_exit "Directory '$d' missing."
 done
 
 case "$option" in
