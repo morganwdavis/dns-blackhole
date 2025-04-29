@@ -98,7 +98,7 @@ do_update() {
     [ ! -d "$tmp_dir" ] && mkdir -p "$tmp_dir"
 
     msg "Fetching master host list..."
-    output="$tmp_dir/master_hosts_list"
+    master_list="$tmp_dir/master_hosts_list"
     attempt=0
     while [ "$attempt" -lt "$max_attempts" ]; do
         if [ "$attempt" -gt 0 ]; then
@@ -106,7 +106,7 @@ do_update() {
             sleep "$retry_seconds"
         fi
 
-        if fetch_file "$master_host_list_url" "$output"; then
+        if fetch_file "$master_host_list_url" "$master_list"; then
             break
         fi
 
@@ -118,7 +118,7 @@ do_update() {
     fi
 
     msg "Optimizing ..."
-    cat "$output" "$dns_blackhole_dir/blocked_hosts" |
+    cat "$master_list" "$dns_blackhole_dir/blocked_hosts" |
         sed -e 's/^[[:space:]]*//' |
         grep -v '^#' |
         awk '{print $2}' |
@@ -232,7 +232,9 @@ while getopts "c:kqr" opt; do
     case "$opt" in
     c) config_file=$OPTARG ;;
     k) keep_temp=1 ;;
-    q) quiet=1 ;;
+    q)
+        quiet=1
+        ;;
     r) refresh="command_named restart" ;;
     *)
         usage_and_exit
@@ -289,4 +291,8 @@ on | off)
     ;;
 esac
 
-$refresh
+if [ $quiet -eq 0 ]; then
+    $refresh
+else
+    $refresh >/dev/null
+fi
