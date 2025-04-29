@@ -156,3 +156,7 @@ Aliases:
 ```
 
 This proves that it would otherwise resolve with the DNS blackhole disabled.
+
+## Forcing a Restart
+
+Note that `rndc reload rpz` (the default refresh command used after any changes) can sometimes delay the correct lookup results. If you want to ensure immediate results, include the `-r` flag to restart `named` completely.
