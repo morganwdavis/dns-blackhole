@@ -59,42 +59,71 @@ Once you're sure everything is working properly, add an entry in crontab or peri
 
 ---
 
-## Files Added in Your `namedb` Directory
+## Files
+
+These files are stored in the directory you configured as `dns_blackhole_dir`.
+
+### `dns-blackhole.sh`
+
+```sh
+# @include https://raw.githubusercontent.com/morganwdavis/dns-blackhole/refs/heads/main/dns-blackhole.sh
+```
+
+### Sample `dns-blackhole.conf`
+
+```sh
+# @include https://raw.githubusercontent.com/morganwdavis/dns-blackhole/refs/heads/main/dns-blackhole.conf.dist
+```
+
+### Sample `allowed_hosts`
+
+```
+# @include https://raw.githubusercontent.com/morganwdavis/dns-blackhole/refs/heads/main/allowed_hosts.dist
+```
+
+### Sample `blocked_hosts`
+
+```
+# @include https://raw.githubusercontent.com/morganwdavis/dns-blackhole/refs/heads/main/blocked_hosts.dist
+```
+
+---
+
+## Dynamically Added Files
+
+**In `named_includes_dir`**
 
 -   `dns-blackhole.zone` - included zone file
+
+**In `named_zone_files_dir`**
+
 -   `dns-blackhole-enabled.rpz` - list of blocked hostnames
 -   `dns-blackhole-disabled.rpz` - empty list for disabled mode
 -   `dns-blackhole.rpz` - symlink (set by `on` and `off`)
 
 ---
 
-## `dns-blackhole.sh`
+## Options
 
-Copy this script to your `dns_blackhole_dir` directory.
+`-c config_file`
+: Specify an alternate config file (default: dns-blackhole.conf)
 
-```sh
-# @source https://raw.githubusercontent.com/morganwdavis/dns-blackhole/refs/heads/main/dns-blackhole.sh
-```
+The script will try to load the configuration from `dns-blackhole.conf` if found in the same directory as the script itself. Use this option to specify an alternate.
 
-## Sample `dns-blackhole.conf`
+`-k`
+: Keep temporary working files (skip cleanup after update)
 
-Create this in your `dns_blackhole_dir` directory.
+After an `update` has completed, the configured `tmp_dir` is removed. Use this option to preserve it.
 
-```sh
-# @source https://raw.githubusercontent.com/morganwdavis/dns-blackhole/refs/heads/main/dns-blackhole.conf.dist
-```
+`-q`
+:Quiet mode: suppress progress messages
 
-## `allowed_hosts`
+Handy for crontab entries. Error messages will still be emitted.
 
-```
-# @source https://raw.githubusercontent.com/morganwdavis/dns-blackhole/refs/heads/main/allowed_hosts.dist
-```
+`-r`
+: Restart 'named' instead of reloading the RPZ
 
-## `blocked_hosts`
-
-```
-# @source https://raw.githubusercontent.com/morganwdavis/dns-blackhole/refs/heads/main/blocked_hosts.dist
-```
+The default refresh command is `rndc reload rpz`, used after any changes. This can sometimes delay the correct lookup results while the zone is being reloaded. If you want to ensure immediate results, the `-r` flag will instead restart `named` completely.
 
 ---
 
@@ -131,6 +160,8 @@ named is running as pid 39227.
 15      4       *       *       *       /usr/local/etc/dns-blackhole/dns-blackhole.sh -q update 2>&1 | mail -s "Update DNS blackhole zone" root
 ```
 
+> Note: Make sure your crontab adds the necessary PATH entries for managing `named` (`rndc`, etc.).
+
 ## Testing {#testing}
 
 Simple test to see if it is working using one of the hostnames in the `dns-blackhole-enabled.rpz` file.
@@ -157,6 +188,6 @@ Aliases:
 
 This proves that it would otherwise resolve with the DNS blackhole disabled.
 
-## Forcing a Restart
+## Contributors
 
-Note that `rndc reload rpz` (the default refresh command used after any changes) can sometimes delay the correct lookup results. If you want to ensure immediate results, include the `-r` flag to restart `named` completely.
+-   [Dan Langille](https://langille.org){.tab}
