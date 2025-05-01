@@ -78,6 +78,13 @@ command_named() {
     fi
 }
 
+command_rndc() {
+    if ! command -v rndc >/dev/null 2>&1; then
+        error_exit "Error: rndc not found in PATH"
+    fi
+    command rndc "$@"
+}
+
 get_symlink_target() {
     link="$named_zone_files_dir/$switch_symlink"
     if [ -L "$link" ]; then
@@ -225,7 +232,7 @@ cd "$SCRIPT_DIR"
 
 quiet=0
 keep_temp=0
-refresh="rndc reload rpz"
+refresh="command_rndc reload rpz"
 
 while getopts "c:kqr" opt; do
     case "$opt" in
