@@ -157,7 +157,7 @@ named is running as pid 39227.
 #minute hour    mday    month   wday    command
 #
 
-15      4       *       *       *       /usr/local/etc/dns-blackhole/dns-blackhole.sh -q update 2>&1 | mail -s "Update DNS blackhole zone" root
+15      4       *       *       *       /usr/local/etc/dns-blackhole/dns-blackhole.sh -q update
 ```
 
 > Note: Make sure your crontab adds the necessary PATH entries for managing `named` (`rndc`, etc.).
@@ -190,4 +190,4 @@ This proves that it would otherwise resolve with the DNS blackhole disabled.
 
 ## Contributors
 
--   [Dan Langille](https://langille.org){.tab}
+-   [Dan Langille](https://langille.org)
