@@ -2,7 +2,7 @@
 
 **Tired of Annoying Ads and Privacy-Invading Trackers? Here's How to Take Control**
 
-Are you frustrated with pop-up ads in your browser or ads cluttering news articles? Not to mention those pesky privacy-invading trackers? You're not alone -- but the good news is, you don't have to put up with them.
+Are you frustrated with pop-up ads in your browser or ads cluttering news articles? Not to mention those pesky privacy-invading trackers? You're not alone -- but the good news is, you don't have to put up with them. The best news: browsing web pages gets significantly faster!
 
 ## First Protect Your Browser
 
@@ -12,7 +12,7 @@ A DNS blackhole works by redirecting requests for known ad-serving and tracker d
 
 ## Add a DNS Blackhole to Your Network
 
-If you're running your own home network with a Unix-based server, you can easily integrate a DNS blackhole into a local BIND DNS service -- and best of all, it's completely free. If you're already using BIND and know your way around it, you can use this script to manage BIND's Response Policy Zone (RPZ) feature. RPZ is designed for DNS firewall/blocking purposes. The script _should_ run on \*BSD and Linux distros with proper pathnames configured. Out of the box, it uses a FreeBSD default configuration.
+If you're running your own home network with a Unix-based server, you can easily integrate a DNS blackhole into a local BIND DNS service -- and best of all, it's completely free. If you're already using BIND and know your way around it, you can use this script to manage BIND's Response Policy Zone (RPZ) feature. RPZ is designed for DNS firewall/blocking purposes. The script _should_ run on \*BSD and Linux distros with proper pathnames configured. Out of the box, it has a FreeBSD default configuration.
 
 > The source of the blocked host list is provided by [Steven Black on GitHub](https://github.com/StevenBlack/hosts). See his page for full details.
 
@@ -188,6 +188,12 @@ Aliases:
 
 This proves that it would otherwise resolve with the DNS blackhole disabled.
 
-## Contributors
+## Project Details
+
+### Repository
+
+[dns-blackhole](https://github.com/morganwdavis/dns-blackhole) on GitHub
+
+### Contributors
 
 -   [Dan Langille](https://langille.org)
